@@ -294,6 +294,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
         # --- AI 分析接入 ---
         st.subheader("💡 决策建议")
         current_level_probs = SEASON_CONFIG[selected_season_name]["DROP_RATES"][level]
+        total_types_count = SEASON_CONFIG[selected_season_name]["DISTINCT_CHAMPS"][target_cost]
         prompt = f"""
         你是一个精通云顶之弈S16概率学的职业教练。请分析我的D牌决策。
         
@@ -371,6 +372,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
