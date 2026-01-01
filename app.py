@@ -180,29 +180,40 @@ with st.sidebar:
         target_copies = st.selectbox("缺几张", [1, 2, 3, 4, 5, 6, 7, 8, 9], index=2)
 
     # --- S16 专属逻辑：解锁数量 ---
-    locked_types = 0
-    default_locked = current_season_data["DEFAULT_LOCKED"].get(target_cost, 0)
-    total_types = current_season_data["DISTINCT_CHAMPS"][target_cost]
+    locked_types = 0 # 最终传给后台计算的“不在卡池里的卡种数”
     
-    if default_locked > 0 or "S16" in selected_season_name:
+    # 获取该费用的总卡种数
+    total_types = current_season_data["DISTINCT_CHAMPS"][target_cost]
+    # 获取默认被锁住的数量 (即 S16 的任务卡数量)
+    default_locked_count = current_season_data["DEFAULT_LOCKED"].get(target_cost, 0)
+    
+    if default_locked_count > 0 or "S16" in selected_season_name:
+        # 计算基础卡数量 (不用解锁就在池子里的)
+        base_pool_count = total_types - default_locked_count
+        
         st.info(f"💡 S16机制：{target_cost}费卡共 {total_types} 种")
+        st.caption(f"- 基础卡 (默认在池): {base_pool_count} 种")
+        st.caption(f"- 任务卡 (需解锁): {default_locked_count} 种")
         
-        # 1. 计算默认已解锁的数量 (总数 - 默认锁住的)
-        default_unlocked = total_types - default_locked
-        
-        # 2. 让用户输入“解锁了几个”
-        unlocked_input = st.number_input(
-            f"你当前**已解锁**了几种？(默认{default_unlocked})",
-            min_value=1,              # 至少解锁1种，否则卡池是空的
-            max_value=total_types,    # 最多全解锁
-            value=default_unlocked,   # 默认值自动对应
+        # 让用户输入：额外解锁了多少张任务卡？
+        unlocked_task_cards = st.number_input(
+            f"你解锁了其中几张**任务卡**？",
+            min_value=0,                  # 最少解锁0张
+            max_value=default_locked_count, # 最多把任务卡全解了
+            value=0,                      # 默认还是0 (只玩基础卡)
             step=1,
-            help="解锁的卡越少，卡池越小，你就越容易搜到想要的卡！"
+            help="只计算那些需要做任务才能拿到的卡。解锁越少，卡池越干净！"
         )
         
-        # 3. [关键] 内部转换回 locked_types
-        # 因为后续的模拟算法和AI Prompt都需要用“锁住的数量”来计算
-        locked_types = total_types - unlocked_input
+        # [核心修正逻辑]
+        # 实际在卡池里的总数 = 基础卡 + 你解锁的任务卡
+        active_pool_count = base_pool_count + unlocked_task_cards
+        
+        # 传给后台的 locked_types = 总数 - 实际在池数
+        # (或者直接理解为：没解锁的任务卡数量)
+        locked_types = default_locked_count - unlocked_task_cards
+        
+        st.write(f"📊 当前卡池有效种类: **{active_pool_count}** / {total_types}")
     # ----------------------------
 
     st.markdown("---")
@@ -360,6 +371,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
