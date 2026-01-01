@@ -262,18 +262,17 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
 
         # --- AI 分析接入 ---
         st.subheader("💡 决策建议")
+        current_level_probs = SEASON_CONFIG[selected_season_name]["DROP_RATES"][level]
         prompt = f"""
-        我是云顶之弈玩家，当前赛季：{selected_season_name}。
+        我是云顶之弈玩家，当前玩的是{selected_season_name}。
         【当前局势】
-        - 等级：{level}
-        - 金币：{gold}
-        - 目标：{target_cost}费卡 (还缺{target_copies}张)
-        - S16特殊机制：该费用我有 {locked_types} 种卡未解锁（卡池变小，好搜）。
+        - 等级：{level}级，有{gold}块钱，搜{target_cost}费卡(缺{target_copies}张)。
+        - S16特殊机制：该费用我有{locked_types}种卡没解锁。
         
-        【量化数据】
-        - 只有你一家同行时的理论成功率：{success_rate*100:.1f}%
-        - 每一刷(5个位置)出现目标卡的真实概率：{real_prob*5*100:.1f}% (基础D牌概率: {current_level_probs[target_cost]})
-        - 预期花费金币：{avg_cost:.0f}
+        【量化结果】
+        - 成功率：{success_rate*100:.1f}%
+        - 真实单格概率：{real_prob*100:.2f}% (基础D牌概率: {current_level_probs[target_cost]}) 
+        - 预期花费：{avg_cost:.0f}
         
         请简短毒舌地评价我的处境，并给出建议（梭哈/慢D/拉人口）。
         """
@@ -295,4 +294,5 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
