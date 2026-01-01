@@ -280,19 +280,33 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
         if api_key:
             try:
                 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+                
                 with st.chat_message("assistant", avatar="🧠"):
-                    stream = client.chat.completions.create(
-                        model="deepseek-reasoner",
-                        messages=[
-                            {"role": "system", "content": "你是一个精通概率和云顶S16机制的职业教练。"},
-                            {"role": "user", "content": prompt}
-                        ],
-                        stream=True
-                    )
+                    # 🌟 核心修改：使用 st.status 容器
+                    with st.status("DeepSeek 正在分析局势...", expanded=True) as status:
+                        st.write("🔄 正在加载 S16 赛季数据...")
+                        st.write("🧮 正在演算D牌概率...")
+                        
+                        # 发起请求
+                        stream = client.chat.completions.create(
+                            model="deepseek-reasoner", # 或者是 deepseek-chat
+                            messages=[
+                                {"role": "system", "content": "你是一个精通概率和云顶S16机制的职业教练。"},
+                                {"role": "user", "content": prompt}
+                            ],
+                            stream=True
+                        )
+                        
+                        # 状态更新为完成，但保持 expanded=True 让用户看到思考过程（可选）
+                        status.update(label="思考完毕，开始输出", state="complete", expanded=False)
+                    
+                    # 输出流式文本
                     st.write_stream(stream)
+                    
             except Exception as e:
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
