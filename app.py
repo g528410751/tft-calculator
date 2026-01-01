@@ -7,86 +7,93 @@ import os
 import platform
 from openai import OpenAI
 
-# --- 核心修复代码开始 ---
-# 获取当前文件所在的文件夹路径
+# --- 0. 基础环境配置 & 字体修复 ---
+# 尝试修复中文乱码 (兼容云端/本地)
+system_name = platform.system()
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# 拼接字体文件的绝对路径 (假设字体文件叫 SimHei.ttf)
 font_path = os.path.join(current_dir, 'SimHei.ttf')
 
-# 检查字体文件是否存在
 if os.path.exists(font_path):
-    # 使用 matplotlib 的 font_manager 加载这个字体
     fm.fontManager.addfont(font_path)
-    # 设置全局字体为这个文件名
     plt.rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
 else:
-    # 如果没找到文件(比如本地运行没下载字体)，回退到系统默认
-    # Windows/Mac/Linux 备选方案
-    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'Microsoft YaHei', 'WenQuanYi Zen Hei']
-
+    if system_name == 'Windows':
+        plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei']
+    elif system_name == 'Darwin':
+        plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'Heiti TC']
+    else:
+        plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
 plt.rcParams['axes.unicode_minus'] = False
-# --- 核心修复代码结束 ---
 
+st.set_page_config(page_title="TFT 概率计算器 S16/S10", page_icon="🎲", layout="wide")
 
-# --- 1. 页面基础配置 ---
-st.set_page_config(
-    page_title="TFT 概率计算器 V3.0",
-    page_icon="🧮",
-    layout="wide"
-)
-
-# --- 2. 赛季数据配置 ---
+# --- 1. 赛季核心数据配置 (已根据CSV更新) ---
 SEASON_CONFIG = {
-    "S13 (当前赛季)": {
-        "POOL_SIZES": {1: 22, 2: 20, 3: 17, 4: 10, 5: 9}, 
-        "DISTINCT_CHAMPS": {1: 13, 2: 13, 3: 13, 4: 12, 5: 8},
+    "S16 (英雄联盟传奇 - 任务赛季)": {
+        "POOL_SIZES": {1: 30, 2: 25, 3: 18, 4: 10, 5: 9},
+        "DISTINCT_CHAMPS": {1: 14, 2: 19, 3: 18, 4: 25, 5: 24}, # 包含未解锁的总数
+        "DEFAULT_LOCKED": {1: 0, 2: 6, 3: 5, 4: 13, 5: 16},    # 默认锁住的数量(来自CSV)
         "DROP_RATES": {
+            1: {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
+            2: {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
             3: {1: 0.75, 2: 0.25, 3: 0.00, 4: 0.00, 5: 0.00},
             4: {1: 0.55, 2: 0.30, 3: 0.15, 4: 0.00, 5: 0.00},
             5: {1: 0.45, 2: 0.33, 3: 0.20, 4: 0.02, 5: 0.00},
-            6: {1: 0.25, 2: 0.40, 3: 0.30, 4: 0.05, 5: 0.00},
-            7: {1: 0.19, 2: 0.30, 3: 0.35, 4: 0.15, 5: 0.01},
+            6: {1: 0.30, 2: 0.40, 3: 0.25, 4: 0.05, 5: 0.00},
+            7: {1: 0.19, 2: 0.30, 3: 0.40, 4: 0.10, 5: 0.01},
+            8: {1: 0.15, 2: 0.20, 3: 0.32, 4: 0.30, 5: 0.03},
+            9: {1: 0.12, 2: 0.18, 3: 0.25, 4: 0.33, 5: 0.12},
+            10: {1: 0.05, 2: 0.10, 3: 0.20, 4: 0.40, 5: 0.25},
+        }
+    },
+    "S10 (强音对决 - 怀旧服)": {
+        "POOL_SIZES": {1: 30, 2: 25, 3: 18, 4: 12, 5: 10},
+        "DISTINCT_CHAMPS": {1: 13, 2: 13, 3: 13, 4: 13, 5: 11},
+        "DEFAULT_LOCKED": {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, # S10无锁定机制
+        "DROP_RATES": {
+            1: {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
+            2: {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
+            3: {1: 0.75, 2: 0.25, 3: 0.00, 4: 0.00, 5: 0.00},
+            4: {1: 0.55, 2: 0.30, 3: 0.15, 4: 0.00, 5: 0.00},
+            5: {1: 0.45, 2: 0.33, 3: 0.20, 4: 0.02, 5: 0.00},
+            6: {1: 0.30, 2: 0.40, 3: 0.25, 4: 0.05, 5: 0.00},
+            7: {1: 0.19, 2: 0.35, 3: 0.35, 4: 0.10, 5: 0.01},
             8: {1: 0.18, 2: 0.25, 3: 0.36, 4: 0.18, 5: 0.03},
             9: {1: 0.10, 2: 0.20, 3: 0.25, 4: 0.35, 5: 0.10},
             10: {1: 0.05, 2: 0.10, 3: 0.20, 4: 0.40, 5: 0.25},
         }
-    },
-    "S11 (画之灵)": {
-        "POOL_SIZES": {1: 22, 2: 20, 3: 17, 4: 13, 5: 10},
-        "DISTINCT_CHAMPS": {1: 13, 2: 13, 3: 13, 4: 12, 5: 8},
-        "DROP_RATES": {
-            8: {1: 0.18, 2: 0.25, 3: 0.32, 4: 0.22, 5: 0.03},
-            9: {1: 0.10, 2: 0.20, 3: 0.25, 4: 0.35, 5: 0.10},
-        }
     }
 }
 
-# --- 3. 模拟核心逻辑 (精度升级) ---
+# --- 2. 核心模拟逻辑 ---
 def run_simulation(season_data, level, target_cost, current_gold, target_copies, 
-                   target_taken_by_others, other_same_cost_taken, num_trials):
+                   target_taken, other_taken, num_trials, locked_types_count=0):
     
     rates = season_data["DROP_RATES"].get(level, {})
     if not rates:
         return "ERROR_LEVEL"
 
-    # 1. 基础概率
-    prob_cost_hit = rates.get(target_cost, 0) # D出一张卡是该费用的概率 (比如8级出4费=18%)
+    prob_cost_hit = rates.get(target_cost, 0)
     
-    # 2. 卡池参数计算
-    one_card_total = season_data["POOL_SIZES"][target_cost] # 单张卡总数 (如4费卡每种10张)
-    distinct_champs = season_data["DISTINCT_CHAMPS"][target_cost] # 该费用有多少种不同的卡 (如4费卡有12种)
+    # 获取该费用基础数据
+    one_card_total = season_data["POOL_SIZES"][target_cost]
+    total_distinct_champs = season_data["DISTINCT_CHAMPS"][target_cost]
     
-    total_pool_size = one_card_total * distinct_champs # 该费用总卡池大小 (10 * 12 = 120张)
+    # [关键逻辑] 计算有效的卡种数量 = 总种类 - 锁住的种类
+    effective_distinct_champs = total_distinct_champs - locked_types_count
     
-    # 3. 初始卡池状态 (静态扣除场外因素)
-    # 分子：我要的卡还剩多少？
-    start_remaining_target = one_card_total - target_taken_by_others
+    if effective_distinct_champs <= 0:
+        return "ERROR_ALL_LOCKED" 
+
+    # 总卡池大小 (分母) = 单张数量 * 有效种类
+    total_pool_size = one_card_total * effective_distinct_champs
+    
+    # 初始卡池状态
+    start_remaining_target = one_card_total - target_taken
     if start_remaining_target < 0:
         return "ERROR_TARGET_LIMIT"
         
-    # 分母：该费用卡池还剩多少？
-    # 总池子 - 别人拿走的我的卡 - 别人拿走的其他的卡
-    start_current_pool = total_pool_size - target_taken_by_others - other_same_cost_taken
+    start_current_pool = total_pool_size - target_taken - other_taken
     if start_current_pool <= 0:
         return "ERROR_POOL_LIMIT"
 
@@ -101,210 +108,186 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
         cost_spent = 0
         gold = current_gold
         
-        # 每次模拟开始时，重置为初始卡池状态
         current_remaining_target = start_remaining_target
         current_pool = start_current_pool
         
-        # 开始 D 牌
         while gold >= 2:
             gold -= 2
             cost_spent += 2
             
-            # 商店刷新 5 个位置
-            for _ in range(5):
-                # 第一层判定：这次是否随机到了该费用 (比如是不是4费卡)
-                if random.random() < prob_cost_hit:
-                    # 第二层判定：在剩下的4费卡堆里，是不是我要的那张？
-                    # 动态概率 = 剩余目标卡 / 剩余总卡池
+            for _ in range(5): # 商店5个位置
+                if random.random() < prob_cost_hit: # 1. 命中费用
+                    # 2. 命中具体卡片 (基于动态卡池)
                     real_time_prob = current_remaining_target / max(current_pool, 1)
                     
                     if random.random() < real_time_prob:
                         copies_found += 1
-                        current_remaining_target -= 1 # 拿走一张，分子减1
-                        current_pool -= 1         # 总池子减1
-                        # 注意：如果是"D到但没买"，在真实TFT机制里是放回卡池的。
-                        # 这里我们只统计"拿走"，即假设你只要看到就会买。
-                        # 对于"D到了其他4费卡"，我们假设不买，所以不影响 current_pool (除非你考虑商店暂时移除机制，这里忽略微小误差)
+                        current_remaining_target -= 1
+                        current_pool -= 1
             
             if copies_found >= target_copies:
                 break
         
-        results.append({"success": copies_found >= target_copies, "cost": cost_spent, "copies": copies_found})
+        results.append({"success": copies_found >= target_copies, "cost": cost_spent})
     
     progress_bar.empty()
     return pd.DataFrame(results)
 
-# --- 4. UI 前端布局 ---
-
-st.title("🎲 金铲铲(TFT) 高精度卡池模拟器 V3.0")
-st.markdown("""
-<style>
-.small-font {font-size:14px !important; color: gray;}
-</style>
-""", unsafe_allow_html=True)
-st.caption("*> 基于蒙特卡洛算法模拟 10,000 次D牌结果，拒绝玄学，相信数学。*")
+# --- 3. UI 布局 ---
+st.title("🎲 金铲铲(TFT) 量化计算器")
+st.caption("支持 S16/S10 | 深度集成任务解锁机制")
 st.divider()
 
-# --- 侧边栏 ---
+# 侧边栏
 with st.sidebar:
+    st.header("🤖 AI 教练 (可选)")
+    # 优先从 Secrets 读取，否则允许手动输入
     if "DEEPSEEK_API_KEY" in st.secrets:
         api_key = st.secrets["DEEPSEEK_API_KEY"]
+        st.success("已连接开发者密钥")
     else:
-        api_key = None
-        st.sidebar.warning("⚠️ 开发者未配置 API Key，AI 功能不可用。")
+        api_key = st.text_input("DeepSeek API Key", type="password")
+
+    st.markdown("---")
+    st.header("⚙️ 游戏设置")
     
-    st.header("⚙️ 基础设置")
-    selected_season_name = st.selectbox("赛季版本", list(SEASON_CONFIG.keys()), index=0)
+    # 1. 赛季选择
+    selected_season_name = st.selectbox("选择赛季", list(SEASON_CONFIG.keys()), index=0)
     current_season_data = SEASON_CONFIG[selected_season_name]
     
-    col_base1, col_base2 = st.columns(2)
-    with col_base1:
+    col1, col2 = st.columns(2)
+    with col1:
         level = st.slider("当前等级", 3, 10, 8)
-    with col_base2:
+    with col2:
         gold = st.number_input("金币", 0, 200, 50, step=10)
-    
-    st.markdown("---")
-    st.header("🎯 目标设定")
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        target_cost = st.selectbox("几费卡", [1, 2, 3, 4, 5], index=3)
-    with col_t2:
-        target_copies = st.selectbox("缺几张", [1, 2, 3, 4, 5, 6, 7, 8, 9], index=2)
         
-    # 获取卡池上限用于校验
-    max_single_card = current_season_data["POOL_SIZES"][target_cost]
-    max_total_pool = max_single_card * current_season_data["DISTINCT_CHAMPS"][target_cost]
-    
     st.markdown("---")
-    st.header("🧮 场外卡池变量 (核心)")
+    st.header("🎯 目标卡片")
+    c_t1, c_t2 = st.columns(2)
+    with c_t1:
+        target_cost = st.selectbox("几费卡", [1, 2, 3, 4, 5], index=3)
+    with c_t2:
+        target_copies = st.selectbox("缺几张", [1, 2, 3, 4, 5, 6, 7, 8, 9], index=2)
+
+    # --- S16 专属逻辑：解锁数量 ---
+    locked_types = 0
+    default_locked = current_season_data["DEFAULT_LOCKED"].get(target_cost, 0)
+    total_types = current_season_data["DISTINCT_CHAMPS"][target_cost]
     
-    # 变量1：对我不利的
-    st.markdown(f"**1. 竞争项 (别人拿了我的卡)** <span style='color:red'>[概率 ↓]</span>", unsafe_allow_html=True)
-    target_taken = st.number_input(
-        f"外面有几张我要的卡？", 
-        min_value=0, 
-        value=0,
-        help="比如你要阿狸，外面如果有一家2星阿狸，这里就填3。"
-    )
-    
-    # 变量2：对我有利的
-    st.markdown(f"**2. 干扰项 (别人拿了别的同费卡)** <span style='color:green'>[概率 ↑]</span>", unsafe_allow_html=True)
-    # 估算上限：总卡池减去我要的那种卡的所有张数
-    max_other_cards = max_total_pool - max_single_card
-    other_taken = st.number_input(
-        f"外面拿了多少张**其他** {target_cost} 费卡？", 
-        min_value=0, max_value=max_other_cards, value=10, step=5,
-        help=f"这是'清卡池'效应。该费用卡池共有 {max_total_pool} 张。如果外面几家都在玩4费卡，这里可能填 20~30。"
-    )
+    if default_locked > 0 or "S16" in selected_season_name:
+        st.info(f"💡 S16机制：{target_cost}费卡共 {total_types} 种")
+        locked_types = st.number_input(
+            f"其中有几种**未解锁**？(默认{default_locked})",
+            min_value=0,
+            max_value=total_types - 1, # 至少留1种
+            value=default_locked,
+            help="未解锁的卡不会进入卡池，这会增加你搜到其他卡的概率！"
+        )
+    # ----------------------------
 
     st.markdown("---")
+    st.header("🧮 场外干扰")
+    
+    max_single_card = current_season_data["POOL_SIZES"][target_cost]
+    st.caption(f"单卡卡池上限: {max_single_card} 张")
+    
+    target_taken = st.number_input(f"外面有几张我要的卡？", min_value=0, value=0)
+    
+    # 智能估算干扰项上限
+    effective_pool_count = total_types - locked_types
+    max_other_cards_pool = (effective_pool_count - 1) * max_single_card
+    
+    other_taken = st.number_input(
+        f"外面拿了多少张**其他同费**卡？", 
+        min_value=0, 
+        value=10, 
+        step=5,
+        help=f"卡池里现在实际上有 {effective_pool_count} 种卡。如果不算你的卡，其他同费卡总数上限约为 {max_other_cards_pool}。"
+    )
+
     num_trials = st.selectbox("模拟次数", [1000, 5000, 10000], index=1)
 
-# --- 主界面逻辑 ---
-if st.button("🚀 运行蒙特卡洛模拟", type="primary", use_container_width=True):
+# 主运行逻辑
+if st.button("🚀 开始量化回测", type="primary", use_container_width=True):
     
     df = run_simulation(
         current_season_data, level, target_cost, gold, 
-        target_copies, target_taken, other_taken, num_trials
+        target_copies, target_taken, other_taken, num_trials,
+        locked_types_count=locked_types
     )
     
     # 错误处理
     if isinstance(df, str):
-        if df == "ERROR_TARGET_LIMIT":
-            st.error(f"❌ 数据冲突：该卡一共只有 {max_single_card} 张，外面已经有 {target_taken} 张了，不可能再搜到。")
-        elif df == "ERROR_POOL_LIMIT":
-            st.error("❌ 数据冲突：卡池已被抽干，请检查输入的'场外'卡牌数量。")
-        elif df == "ERROR_LEVEL":
-            st.error("❌ 配置缺失：当前赛季数据中没有该等级的概率配置。")
+        error_map = {
+            "ERROR_ALL_LOCKED": "所有该费用的卡都被锁住了，卡池是空的！",
+            "ERROR_TARGET_LIMIT": "卡池里这张卡已经被拿光了！",
+            "ERROR_POOL_LIMIT": "同费卡池已被抽干，请检查场外数据。",
+            "ERROR_LEVEL": "该等级无法D到此费用的卡。"
+        }
+        st.error(f"❌ {error_map.get(df, '未知错误')}")
+        
     elif not df.empty:
         success_rate = df["success"].mean()
-        success_cases = df[df["success"] == True]
-        avg_cost = success_cases["cost"].mean() if not success_cases.empty else 0
+        avg_cost = df[df["success"]]["cost"].mean() if success_rate > 0 else 0
         
-        # --- 结果展示面板 ---
+        # 结果展示
         st.subheader("📊 模拟报告")
+        kpi1, kpi2, kpi3 = st.columns(3)
+        kpi1.metric("🎯 成功概率", f"{success_rate*100:.1f}%")
+        kpi2.metric("💰 预期花费", f"{avg_cost:.0f} 金币")
         
-        # 1. 关键指标
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🎯 成功概率", f"{success_rate*100:.1f}%")
-        c2.metric("💰 预期花费", f"{avg_cost:.0f} 金币")
+        # 真实概率计算 (展示给用户看)
+        rates = current_season_data["DROP_RATES"][level]
+        base_rate = rates[target_cost]
         
-        # 剩余卡量展示
-        left_target = max_single_card - target_taken
-        c3.metric("🃏 剩余目标卡", f"{left_target} 张", help="卡池里还剩几张阿狸")
+        # 现在的分母
+        current_pool_size = (max_single_card * (total_types - locked_types)) - target_taken - other_taken
+        # 现在的分子
+        current_target_left = max_single_card - target_taken
         
-        # 真实概率展示 (条件概率)
-        current_pool_left = max_total_pool - target_taken - other_taken
-        real_prob = (left_target / current_pool_left) if current_pool_left > 0 else 0
-        base_rate = current_season_data["DROP_RATES"][level][target_cost]
-        final_single_slot_prob = base_rate * real_prob
-        
-        c4.metric("🎲 单个格子真率", f"{final_single_slot_prob*100:.2f}%", 
-                  help=f"计算公式：{level}级概率({base_rate}) × (剩余目标{left_target}/剩余池子{current_pool_left})")
-
-        # 2. 图表
-        st.markdown("#### 📉 资金分布图")
-        if not success_cases.empty:
-            fig, ax = plt.subplots(figsize=(10, 3))
-            ax.hist(success_cases["cost"], bins=20, color='#0984e3', alpha=0.75, edgecolor='white')
-            ax.set_xlabel("消耗金币")
-            ax.set_ylabel("频次")
-            ax.axvline(gold, color='#d63031', linestyle='--', linewidth=2, label=f'你的预算 ({gold})')
-            ax.legend()
-            st.pyplot(fig)
-        else:
-            st.warning("⚠️ 在所有模拟中，您一次都没有成功。这就是绝对的绝望。")
+        real_prob = 0
+        if current_pool_size > 0:
+            real_prob = base_rate * (current_target_left / current_pool_size)
             
-        # 3. 结论生成 (AI 分析员风格)
+        kpi3.metric("🎲 真实出卡率/格", f"{real_prob*100:.2f}%", help=f"基础概率 {base_rate} x 卡池占比修正")
+
+        # 图表
+        if success_rate > 0:
+            fig, ax = plt.subplots(figsize=(10, 3))
+            ax.hist(df[df["success"]]["cost"], bins=20, color='#6c5ce7', alpha=0.8)
+            ax.set_title("资金消耗分布")
+            ax.set_xlabel("花费金币")
+            ax.axvline(gold, color='red', linestyle='--')
+            st.pyplot(fig)
+
+        # --- AI 分析接入 ---
         st.subheader("💡 决策建议")
-
-        # 准备发送给 AI 的提示词数据
-        prompt_content = f"""
-        我是云顶之弈(TFT)玩家。当前情况：
-        - 等级：{level}级
-        - 存款：{gold}金币
-        - 目标：搜 {target_cost}费卡 (当前缺少{target_copies}张)
-        - 场外情况：同行拿走我的卡{target_taken}张，别人拿走同费杂卡{other_taken}张。
+        prompt = f"""
+        我是云顶之弈玩家，当前玩的是{selected_season_name}。
+        情况：{level}级，有{gold}块钱，搜{target_cost}费卡(缺{target_copies}张)。
+        S16特殊机制：该费用我有{locked_types}种卡没解锁（未进卡池），卡池变小了。
         
-        量化模拟结果：
-        - 成功搜到的概率：{success_rate*100:.1f}%
-        - 预期平均花费：{avg_cost:.0f}金币
-        - 每一个D牌格子的真实出卡率：{final_single_slot_prob*100:.2f}% (基础概率是{base_rate})
+        量化结果：
+        - 成功率：{success_rate*100:.1f}%
+        - 真实单格概率：{real_prob*100:.2f}% (基础{base_rate})
         
-        请像一个从不废话的王者段位教练，根据EV(期望值)分析，告诉我：
-        1. 现在的概率是属于"天胡"、"正常"还是"绝望"？
-        2. 建议我是：直接梭哈(All-in)、慢D(Slow Roll)、还是存钱拉人口？
-        3. 如果失败了，后果有多严重？
-        请控制在100字以内，风格犀利一点。
+        请简短毒舌地评价我的处境，并给出建议（梭哈/慢D/拉人口）。
         """
-
+        
         if api_key:
-            # 如果用户填了 Key，调用 DeepSeek
             try:
                 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
-                
-                # 创建一个流式输出的容器
                 with st.chat_message("assistant", avatar="🧠"):
                     stream = client.chat.completions.create(
                         model="deepseek-chat",
                         messages=[
-                            {"role": "system", "content": "你是一个精通概率论的云顶之弈职业教练，擅长用数据说话，说话简短有力。"},
-                            {"role": "user", "content": prompt_content},
+                            {"role": "system", "content": "你是一个精通概率和云顶S16机制的职业教练。"},
+                            {"role": "user", "content": prompt}
                         ],
-                        stream=True,
+                        stream=True
                     )
                     st.write_stream(stream)
             except Exception as e:
-                st.error(f"AI 调用失败: {e}")
+                st.error(f"AI 连接失败: {e}")
         else:
-            # 如果没填 Key，显示原来的静态结论 (作为保底)
-            st.info(f"""
-            **基础量化结论：**
-            * 外面有 **{other_taken} 张** 同费杂卡被拿走，搜牌环境：{'优良' if other_taken > 10 else '一般'}。
-            * 真实概率修正后，每个格子的出卡率约为 **{final_single_slot_prob*100:.2f}%**。
-            * **建议：** {'概率过低，建议存钱或拉人口' if success_rate < 0.3 else '概率尚可，可以尝试' if success_rate < 0.7 else '机会很大，建议冲刺！'}
-            *(想看详细战术分析？请在侧边栏填入 DeepSeek API Key)*
-            """)
-
-
-
+             st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
