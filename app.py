@@ -2,8 +2,10 @@ import streamlit as st
 import random
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm # 必须引入这个
+import matplotlib.font_manager as fm
 import os
+import platform
+from openai import OpenAI
 
 # --- 核心修复代码开始 ---
 # 获取当前文件所在的文件夹路径
@@ -145,6 +147,12 @@ st.divider()
 
 # --- 侧边栏 ---
 with st.sidebar:
+    if "DEEPSEEK_API_KEY" in st.secrets:
+        api_key = st.secrets["DEEPSEEK_API_KEY"]
+    else:
+        api_key = None
+        st.sidebar.warning("⚠️ 开发者未配置 API Key，AI 功能不可用。")
+    
     st.header("⚙️ 基础设置")
     selected_season_name = st.selectbox("赛季版本", list(SEASON_CONFIG.keys()), index=0)
     current_season_data = SEASON_CONFIG[selected_season_name]
@@ -248,16 +256,55 @@ if st.button("🚀 运行蒙特卡洛模拟", type="primary", use_container_widt
             st.warning("⚠️ 在所有模拟中，您一次都没有成功。这就是绝对的绝望。")
             
         # 3. 结论生成 (AI 分析员风格)
-        st.info(f"""
-        **💡 量化分析结论：**
-        在 {level} 级 D {target_cost} 费卡的场景下：
-        * 由于外面有 **{other_taken} 张** 同费杂卡被拿走，你的搜牌概率获得了 **{'提升' if other_taken > 0 else '无变化'}**。
-        * 由于外面有 **{target_taken} 张** 你的核心卡被拿走，你的卡池剩余仅 **{left_target} 张**。
-        * 综合来看，每一个商店格子出现你要的卡的真实概率约为 **{final_single_slot_prob*100:.2f}%**。
-        """)
+        st.subheader("💡 决策建议")
 
-    else:
+        # 准备发送给 AI 的提示词数据
+        prompt_content = f"""
+        我是云顶之弈(TFT)玩家。当前情况：
+        - 等级：{level}级
+        - 存款：{gold}金币
+        - 目标：搜 {target_cost}费卡 (当前缺少{target_copies}张)
+        - 场外情况：同行拿走我的卡{target_taken}张，别人拿走同费杂卡{other_taken}张。
+        
+        量化模拟结果：
+        - 成功搜到的概率：{success_rate*100:.1f}%
+        - 预期平均花费：{avg_cost:.0f}金币
+        - 每一个D牌格子的真实出卡率：{final_single_slot_prob*100:.2f}% (基础概率是{base_rate})
+        
+        请像一个从不废话的王者段位教练，根据EV(期望值)分析，告诉我：
+        1. 现在的概率是属于"天胡"、"正常"还是"绝望"？
+        2. 建议我是：直接梭哈(All-in)、慢D(Slow Roll)、还是存钱拉人口？
+        3. 如果失败了，后果有多严重？
+        请控制在100字以内，风格犀利一点。
+        """
 
-        st.error("未知错误，请检查参数。")
+        if api_key:
+            # 如果用户填了 Key，调用 DeepSeek
+            try:
+                client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+                
+                # 创建一个流式输出的容器
+                with st.chat_message("assistant", avatar="🧠"):
+                    stream = client.chat.completions.create(
+                        model="deepseek-chat",
+                        messages=[
+                            {"role": "system", "content": "你是一个精通概率论的云顶之弈职业教练，擅长用数据说话，说话简短有力。"},
+                            {"role": "user", "content": prompt_content},
+                        ],
+                        stream=True,
+                    )
+                    st.write_stream(stream)
+            except Exception as e:
+                st.error(f"AI 调用失败: {e}")
+        else:
+            # 如果没填 Key，显示原来的静态结论 (作为保底)
+            st.info(f"""
+            **基础量化结论：**
+            * 外面有 **{other_taken} 张** 同费杂卡被拿走，搜牌环境：{'优良' if other_taken > 10 else '一般'}。
+            * 真实概率修正后，每个格子的出卡率约为 **{final_single_slot_prob*100:.2f}%**。
+            * **建议：** {'概率过低，建议存钱或拉人口' if success_rate < 0.3 else '概率尚可，可以尝试' if success_rate < 0.7 else '机会很大，建议冲刺！'}
+            *(想看详细战术分析？请在侧边栏填入 DeepSeek API Key)*
+            """)
+
 
 
