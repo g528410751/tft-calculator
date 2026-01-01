@@ -137,7 +137,7 @@ st.markdown("""
 .small-font {font-size:14px !important; color: gray;}
 </style>
 """, unsafe_allow_html=True)
-st.caption("双重卡池变量算法 | 模拟同行互卡与清卡池效应")
+st.caption("*> 基于蒙特卡洛算法模拟 10,000 次D牌结果，拒绝玄学，相信数学。*")
 st.divider()
 
 # --- 侧边栏 ---
@@ -255,3 +255,4 @@ if st.button("🚀 运行蒙特卡洛模拟", type="primary", use_container_widt
     else:
 
         st.error("未知错误，请检查参数。")
+
