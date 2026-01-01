@@ -186,13 +186,23 @@ with st.sidebar:
     
     if default_locked > 0 or "S16" in selected_season_name:
         st.info(f"💡 S16机制：{target_cost}费卡共 {total_types} 种")
-        locked_types = st.number_input(
-            f"其中有几种**未解锁**？(默认{default_locked})",
-            min_value=0,
-            max_value=total_types - 1, # 至少留1种
-            value=default_locked,
-            help="未解锁的卡不会进入卡池，这会增加你搜到其他卡的概率！"
+        
+        # 1. 计算默认已解锁的数量 (总数 - 默认锁住的)
+        default_unlocked = total_types - default_locked
+        
+        # 2. 让用户输入“解锁了几个”
+        unlocked_input = st.number_input(
+            f"你当前**已解锁**了几种？(默认{default_unlocked})",
+            min_value=1,              # 至少解锁1种，否则卡池是空的
+            max_value=total_types,    # 最多全解锁
+            value=default_unlocked,   # 默认值自动对应
+            step=1,
+            help="解锁的卡越少，卡池越小，你就越容易搜到想要的卡！"
         )
+        
+        # 3. [关键] 内部转换回 locked_types
+        # 因为后续的模拟算法和AI Prompt都需要用“锁住的数量”来计算
+        locked_types = total_types - unlocked_input
     # ----------------------------
 
     st.markdown("---")
@@ -350,6 +360,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
