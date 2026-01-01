@@ -274,17 +274,23 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
         st.subheader("💡 决策建议")
         current_level_probs = SEASON_CONFIG[selected_season_name]["DROP_RATES"][level]
         prompt = f"""
-        我是云顶之弈玩家，当前玩的是{selected_season_name}。
+        你是一个精通云顶之弈S16概率学的职业教练。请分析我的D牌决策。
+        
         【当前局势】
-        - 等级：{level}级，有{gold}块钱，搜{target_cost}费卡(缺{target_copies}张)。
-        - S16特殊机制：该费用我有{locked_types}种卡没解锁。
+        - 赛季：{selected_season_name}
+        - 现状：{level}级，存款{gold}，搜{target_cost}费卡(缺{target_copies}张)。
         
-        【量化结果】
-        - 成功率：{success_rate*100:.1f}%
+        【关键机制：卡池锁定】
+        - S16特殊规则：{target_cost}费卡总共有 {total_types_count} 种，但我有 {locked_types} 种【未解锁】。
+        - **重要推论**：这意味着商店刷新时，这 {locked_types} 种卡**绝对不会出现**。
+        - **结论**：卡池分母被大幅压缩了！这比正常情况下更容易搜到我要的卡（即“控卡池”战术）。请务必将此优势考虑在内。
+        
+        【量化回测数据】
+        - 模拟成功率：{success_rate*100:.1f}% (指在花光钱之前搜到的概率)
         - 真实单格概率：{real_prob*100:.2f}% (基础D牌概率: {current_level_probs[target_cost]}) 
-        - 预期花费：{avg_cost:.0f}
+        - 预期花费：{avg_cost:.0f} 金币
         
-        请简短毒舌地评价我的处境，并给出建议（梭哈/慢D/拉人口）。
+        请结合我的“锁卡”优势和量化数据，简短毒舌地评价我的处境（是天胡开局还是依然很难搜？），并直接给出操作建议（梭哈/慢D/存钱拉人口）。
         """
         
         if api_key:
@@ -344,6 +350,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
