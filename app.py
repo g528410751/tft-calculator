@@ -2,24 +2,29 @@ import streamlit as st
 import random
 import pandas as pd
 import matplotlib.pyplot as plt
-import platform
-
-import matplotlib.font_manager as fm
+import matplotlib.font_manager as fm # 必须引入这个
 import os
 
-# --- 强制加载本地字体文件 (云端适配版) ---
-# 假设你把字体文件 SimHei.ttf 放在了同级目录下
-font_path = 'SimHei.ttf'  # 这里改成你实际上传的字体文件名
+# --- 核心修复代码开始 ---
+# 获取当前文件所在的文件夹路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# 拼接字体文件的绝对路径 (假设字体文件叫 SimHei.ttf)
+font_path = os.path.join(current_dir, 'SimHei.ttf')
 
+# 检查字体文件是否存在
 if os.path.exists(font_path):
-    # 如果找到了字体文件 (云端或本地有这个文件)
-    font_prop = fm.FontProperties(fname=font_path)
-    plt.rcParams['font.family'] = font_prop.get_name()
+    # 使用 matplotlib 的 font_manager 加载这个字体
+    fm.fontManager.addfont(font_path)
+    # 设置全局字体为这个文件名
+    plt.rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
 else:
-    # 如果没找到 (保底措施)
-    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'Microsoft YaHei']
+    # 如果没找到文件(比如本地运行没下载字体)，回退到系统默认
+    # Windows/Mac/Linux 备选方案
+    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'Microsoft YaHei', 'WenQuanYi Zen Hei']
 
 plt.rcParams['axes.unicode_minus'] = False
+# --- 核心修复代码结束 ---
+
 
 # --- 1. 页面基础配置 ---
 st.set_page_config(
@@ -248,4 +253,5 @@ if st.button("🚀 运行蒙特卡洛模拟", type="primary", use_container_widt
         """)
 
     else:
+
         st.error("未知错误，请检查参数。")
