@@ -39,6 +39,9 @@ SEASON_CONFIG = {
         "POOL_SIZES": {1: 22, 2: 20, 3: 17, 4: 10, 5: 9}, 
         "DISTINCT_CHAMPS": {1: 13, 2: 13, 3: 13, 4: 12, 5: 8},
         "DROP_RATES": {
+            3: {1: 0.75, 2: 0.25, 3: 0.00, 4: 0.00, 5: 0.00},
+            4: {1: 0.55, 2: 0.30, 3: 0.15, 4: 0.00, 5: 0.00},
+            5: {1: 0.45, 2: 0.33, 3: 0.20, 4: 0.02, 5: 0.00},
             6: {1: 0.25, 2: 0.40, 3: 0.30, 4: 0.05, 5: 0.00},
             7: {1: 0.19, 2: 0.30, 3: 0.35, 4: 0.15, 5: 0.01},
             8: {1: 0.18, 2: 0.25, 3: 0.36, 4: 0.18, 5: 0.03},
@@ -148,7 +151,7 @@ with st.sidebar:
     
     col_base1, col_base2 = st.columns(2)
     with col_base1:
-        level = st.slider("当前等级", 6, 10, 8)
+        level = st.slider("当前等级", 3, 10, 8)
     with col_base2:
         gold = st.number_input("金币", 0, 200, 50, step=10)
     
@@ -170,8 +173,9 @@ with st.sidebar:
     # 变量1：对我不利的
     st.markdown(f"**1. 竞争项 (别人拿了我的卡)** <span style='color:red'>[概率 ↓]</span>", unsafe_allow_html=True)
     target_taken = st.number_input(
-        f"外面有几张我要的卡？(Max {max_single_card})", 
-        min_value=0, max_value=max_single_card, value=0,
+        f"外面有几张我要的卡？", 
+        min_value=0, 
+        value=0,
         help="比如你要阿狸，外面如果有一家2星阿狸，这里就填3。"
     )
     
@@ -255,4 +259,5 @@ if st.button("🚀 运行蒙特卡洛模拟", type="primary", use_container_widt
     else:
 
         st.error("未知错误，请检查参数。")
+
 
