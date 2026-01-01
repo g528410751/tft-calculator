@@ -282,31 +282,55 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
                 
                 with st.chat_message("assistant", avatar="🧠"):
-                    # 🌟 核心修改：使用 st.status 容器
-                    with st.status("DeepSeek 正在分析局势...", expanded=True) as status:
-                        st.write("🔄 正在加载 S16 赛季数据...")
-                        st.write("🧮 正在演算D牌概率...")
-                        
-                        # 发起请求
-                        stream = client.chat.completions.create(
-                            model="deepseek-reasoner", # 或者是 deepseek-chat
-                            messages=[
-                                {"role": "system", "content": "你是一个精通概率和云顶S16机制的职业教练。"},
-                                {"role": "user", "content": prompt}
-                            ],
-                            stream=True
-                        )
-                        
-                        # 状态更新为完成，但保持 expanded=True 让用户看到思考过程（可选）
-                        status.update(label="思考完毕，开始输出", state="complete", expanded=False)
+                    # 1. 创建占位符
+                    status_container = st.status("DeepSeek 正在深度思考...", expanded=True)
+                    with status_container:
+                        reasoning_placeholder = st.empty() # 用于显示思考过程
+                        st.write("---") # 分割线
                     
-                    # 输出流式文本
-                    st.write_stream(stream)
+                    answer_placeholder = st.empty() # 用于显示最终回答
                     
+                    # 2. 发起请求
+                    stream = client.chat.completions.create(
+                        model="deepseek-reasoner", # 确保使用 reasoner 模型
+                        messages=[
+                            {"role": "system", "content": "你是一个精通概率和云顶S16机制的职业教练。"},
+                            {"role": "user", "content": prompt}
+                        ],
+                        stream=True
+                    )
+                    
+                    # 3. 手动处理流式数据
+                    reasoning_content = ""
+                    final_content = ""
+                    
+                    for chunk in stream:
+                        if chunk.choices:
+                            delta = chunk.choices[0].delta
+                            
+                            # A. 捕获思考过程 (DeepSeek 特有字段)
+                            # 注意：不同库版本可能字段不同，这里做个安全获取
+                            r_content = getattr(delta, 'reasoning_content', None)
+                            if r_content:
+                                reasoning_content += r_content
+                                # 实时更新思考框
+                                reasoning_placeholder.markdown(f"_{reasoning_content}_")
+                            
+                            # B. 捕获最终回答
+                            content = delta.content
+                            if content:
+                                final_content += content
+                                # 实时更新回答
+                                answer_placeholder.markdown(final_content)
+                    
+                    # 4. 全部接收完毕后，关闭状态条
+                    status_container.update(label="思考完毕", state="complete", expanded=False)
+        
             except Exception as e:
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
