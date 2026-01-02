@@ -135,6 +135,7 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
         
         current_remaining_target = start_remaining_target
         current_pool = start_current_pool
+        rolls_count = 0
         
         while gold >= 2:
             gold -= 2
@@ -513,6 +514,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
