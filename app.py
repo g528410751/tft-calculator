@@ -295,17 +295,24 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
         st.subheader("💡 决策建议")
         current_level_probs = SEASON_CONFIG[selected_season_name]["DROP_RATES"][level]
         total_types_count = SEASON_CONFIG[selected_season_name]["DISTINCT_CHAMPS"][target_cost]
+        card_pool_size = SEASON_CONFIG[selected_season_name]["POOL_SIZES"][target_cost]
+        remaining_in_pool = card_pool_size - target_taken
         prompt = f"""
         你是一个精通云顶之弈S16概率学的职业教练。请分析我的D牌决策。
         
-        【当前局势】
+        【基础参数】
         - 赛季：{selected_season_name}
-        - 现状：{level}级，存款{gold}，搜{target_cost}费卡(缺{target_copies}张)。
-        
-        【关键机制：卡池锁定】
-        - S16特殊规则：{target_cost}费卡总共有 {total_types_count} 种，但我有 {locked_types} 种【未解锁】。
-        - **重要推论**：这意味着商店刷新时，这 {locked_types} 种卡**绝对不会出现**。
-        - **结论**：如果解锁的卡比较少时，这比正常情况下更容易搜到我要的卡。但一般情况下解锁的卡不会很多，因为需要做任务解锁，通常在不刻意做任务的情况下每一阶卡只会解锁一个左右。S16赛季去掉所有需要解锁的卡的情况下，卡的数量跟其他赛季相同，所以相对其他赛季来讲，S16更不容易D牌。请务必将此机制考虑在内。但在输出结论时不要过度强调这个信息。
+        - 目标：{target_cost}费卡 (单卡池上限: {card_pool_size} 张)
+        - 现状：{level}级，存款 {gold} 金币。
+        - 需求：我还需要买 {target_copies} 张。
+        - 场外干扰：外面已经被拿走了 {target_taken} 张同名卡。
+        - 剩余空间：卡池里理论上还剩 {remaining_in_pool} 张该卡 (若小于需求量则绝无可能)。
+
+        【S16 机制分析】
+        - 基础设定：{target_cost}费卡共有 {total_types_count} 种。
+        - 我的解锁情况：有 {locked_types} 种任务卡【未解锁】（不进入卡池）。
+        - 实际卡池：当前商店只会刷新 {total_types_count - locked_types} 种不同的{target_cost}费卡。
+        - **结论**：如果解锁的卡比较少时，这比正常情况下更容易搜到我要的卡。但一般情况下解锁的卡不会很多，因为需要做任务解锁，通常在不刻意做任务的情况下每一阶卡只会解锁一个左右。S16赛季去掉所有需要解锁的卡的情况下，卡的数量跟其他赛季相差不大，所以相对其他赛季来讲，S16更不容易D牌。请务必将此机制考虑在内。但在输出结论时不要过度强调这个信息。
         
         【量化回测数据】
         - 模拟成功率：{success_rate*100:.1f}% (指在花光钱之前搜到的概率)
@@ -316,8 +323,11 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
         如：我给出6级，存款50，搜8费卡，缺9张，模拟成功率为0的情况下，应该给出两种结论：
         1. 6级D9张8费是傻逼操作
         2. 想玩8费阵容先存钱拉人口，到8级再D
-        
-        请结合我当前局势、关键机制、量化数据，简短毒舌地评价我的处境（是天胡开局还是依然很难搜？），并直接给出操作建议（梭哈/慢D/存钱拉人口）。
+
+        【任务】
+        请根据上述数据，简短、犀利、毒舌地评价我的处境（是天胡开局还是依然很难搜？）。
+        特别注意：如果卡池剩余张数({remaining_in_pool}) < 需求张数({target_copies})，请直接骂醒我。
+        请结合我当前局势、关键机制、量化数据给出建议：梭哈 / 慢D / 存钱拉人口 / 投降。
         """
         
         if api_key:
@@ -377,6 +387,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
