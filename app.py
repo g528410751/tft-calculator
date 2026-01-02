@@ -71,25 +71,40 @@ SEASON_CONFIG = {
             8: {1: 0.18, 2: 0.25, 3: 0.36, 4: 0.18, 5: 0.03},
             9: {1: 0.10, 2: 0.20, 3: 0.25, 4: 0.35, 5: 0.10},
             10: {1: 0.05, 2: 0.10, 3: 0.20, 4: 0.40, 5: 0.25},
+        },
+        "HEADLINER_RATES": { # S10 天选概率表
+            1: {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
+            2: {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
+            3: {1: 1.00, 2: 0.00, 3: 0.00, 4: 0.00, 5: 0.00},
+            4: {1: 0.80, 2: 0.20, 3: 0.00, 4: 0.00, 5: 0.00},
+            5: {1: 0.30, 2: 0.70, 3: 0.00, 4: 0.00, 5: 0.00},
+            6: {1: 0.00, 2: 0.75, 3: 0.25, 4: 0.00, 5: 0.00},
+            7: {1: 0.00, 2: 0.40, 3: 0.60, 4: 0.00, 5: 0.00},
+            8: {1: 0.00, 2: 0.00, 3: 0.70, 4: 0.30, 5: 0.00}, 
+            9: {1: 0.00, 2: 0.00, 3: 0.00, 4: 0.98, 5: 0.02},
+            10: {1: 0.00, 2: 0.00, 3: 0.00, 4: 0.30, 5: 0.70},
         }
     }
 }
 
 # --- 2. 核心模拟逻辑 ---
-def run_simulation(season_data, level, target_cost, current_gold, target_copies, 
-                   target_taken, other_taken, num_trials, locked_types_count=0):
+def run_simulation(season_data, level, target_cost, current_gold, target_copies, target_taken, other_taken, num_trials, locked_types_count=0, search_headliner=False):
     
     rates = season_data["DROP_RATES"].get(level, {})
     if not rates:
         return "ERROR_LEVEL"
-
     prob_cost_hit = rates.get(target_cost, 0)
+
+    prob_hl_cost_hit = 0
+    if search_headliner:
+        hl_rates = season_data.get("HEADLINER_RATES", {}).get(level, {})
+        prob_hl_cost_hit = hl_rates.get(target_cost, 0)
     
     # 获取该费用基础数据
     one_card_total = season_data["POOL_SIZES"][target_cost]
     total_distinct_champs = season_data["DISTINCT_CHAMPS"][target_cost]
     
-    # [关键逻辑] 计算有效的卡种数量 = 总种类 - 锁住的种类
+    # 计算有效的卡种数量 = 总种类 - 锁住的种类
     effective_distinct_champs = total_distinct_champs - locked_types_count
     
     if effective_distinct_champs <= 0:
@@ -125,15 +140,33 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
             gold -= 2
             cost_spent += 2
             
-            for _ in range(5): # 商店5个位置
-                if random.random() < prob_cost_hit: # 1. 命中费用
-                    # 2. 命中具体卡片 (基于动态卡池)
+            # --- 商店生成逻辑 ---
+            # S10 机制：如果你没有天选，每次刷新必有 1 个天选位
+            # search_headliner=True 时，模拟 4 个普通位 + 1 个天选位
+            normal_slots = 4 if search_headliner else 5
+            
+            # 1. 遍历普通格子
+            for _ in range(normal_slots):
+                if random.random() < prob_cost_hit:
+                    # 命中费率后，判断是不是我要的卡
                     real_time_prob = current_remaining_target / max(current_pool, 1)
-                    
                     if random.random() < real_time_prob:
                         copies_found += 1
                         current_remaining_target -= 1
                         current_pool -= 1
+            
+            # 2. 遍历天选格子 (S10 核心修改)
+            if search_headliner:
+                # 只有 1 个位置是天选
+                if random.random() < prob_hl_cost_hit:
+                    # 规则：天选需要卡池里至少有 3 张才能刷出来
+                    # 判断是不是我要的卡 (概率同上)
+                    if current_remaining_target >= 3:
+                        real_time_prob = current_remaining_target / max(current_pool, 1)
+                        if random.random() < real_time_prob:
+                            copies_found += 3 # 天选直接给 3 张！
+                            current_remaining_target -= 3
+                            current_pool -= 3
             
             if copies_found >= target_copies:
                 break
@@ -204,6 +237,11 @@ with st.sidebar:
     # 1. 赛季选择
     selected_season_name = st.selectbox("选择赛季", list(SEASON_CONFIG.keys()), index=0)
     current_season_data = SEASON_CONFIG[selected_season_name]
+
+    search_headliner = False
+    if "S10" in selected_season_name:
+        st.info("💡 S10 机制：赛季之星 (天选)")
+        search_headliner = st.checkbox("我是来找天选/赛季之星的", value=True, help="勾选后，每次刷新必有一个格子是天选位，命中直接获得3张！")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -219,7 +257,7 @@ with st.sidebar:
     with c_t2:
         target_copies = st.selectbox("缺几张", [1, 2, 3, 4, 5, 6, 7, 8, 9], index=2)
 
-    # --- S16 专属逻辑：解锁数量 ---
+    # --- S16 专属逻辑 ---
     locked_types = 0 # 最终传给后台计算的“不在卡池里的卡种数”
     
     # 获取该费用的总卡种数
@@ -285,6 +323,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
         current_season_data, level, target_cost, gold, 
         target_copies, target_taken, other_taken, num_trials,
         locked_types_count=locked_types
+        search_headliner=search_headliner
     )
     
     # 错误处理
@@ -372,7 +411,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
             2. 想玩8费阵容先存钱拉人口，到8级再D
     
             【任务】
-            请根据上述数据，简短、犀利、毒舌地评价我的处境（是天胡开局还是依然很难搜？）。
+            请根据上述数据和赛季机制，简短、犀利、毒舌地评价我的处境（是天胡开局还是依然很难搜？）。
             特别注意：如果卡池剩余张数({remaining_in_pool}) < 需求张数({target_copies})，请直接骂醒我。
             请结合我当前局势、关键机制、量化数据给出建议：梭哈 / 慢D / 存钱拉人口 / 投降。
             """
@@ -387,6 +426,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
             - 竞争环境：卡池上限 {card_pool_size} 张。
               - 致命伤：外面已经有 {target_taken} 张我的卡被拿走。
               - 干扰项：外面拿走了 {other_taken} 张其他的 {target_cost} 费卡 (帮我清了卡池)。
+            - **核心机制**：我正在找天选(Season Headliner)：{'是' if search_headliner else '否'}。(S10天选机制：买入即2星，注意：如果我找天选，一旦命中就是3张，爆发性极强)
 
             【量化结果】
             - 成功率: {success_rate*100:.1f}% 
@@ -399,7 +439,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
             2. 想玩8费阵容先存钱拉人口，到8级再D
     
             【任务】
-            请根据上述数据，简短、犀利、毒舌地评价我的处境（是天胡开局还是依然很难搜？）。
+            请根据上述数据和赛季机制，简短、犀利、毒舌地评价我的处境（是天胡开局还是依然很难搜？）。
             请结合我当前局势、关键机制、量化数据给出建议：梭哈 / 慢D / 存钱拉人口 / 投降。
             """
         
@@ -460,6 +500,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
