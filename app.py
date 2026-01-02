@@ -88,15 +88,15 @@ SEASON_CONFIG = {
 }
 
 # --- 2. 核心模拟逻辑 ---
-def run_simulation(season_data, level, target_cost, current_gold, target_copies, target_taken, other_taken, num_trials, locked_types_count=0, has_headliner=False):
+def run_simulation(season_data, level, target_cost, start_gold, target_copies, target_taken, other_taken, num_trials, locked_types_count=0, has_headliner=False):
     
     rates = season_data["DROP_RATES"].get(level, {})
     if not rates:
         return "ERROR_LEVEL"
     prob_cost_hit = rates.get(target_cost, 0)
 
+    # 获取天选概率
     prob_hl_cost_hit = 0
-    # ✅ 正确写法：检查赛季数据里有没有天选配置表
     hl_rates_config = season_data.get("HEADLINER_RATES", {})
     if hl_rates_config:
         hl_rates = hl_rates_config.get(level, {})
@@ -106,7 +106,7 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
     one_card_total = season_data["POOL_SIZES"][target_cost]
     total_distinct_champs = season_data["DISTINCT_CHAMPS"][target_cost]
     
-    # 计算有效的卡种数量 = 总种类 - 锁住的种类
+    # S16 机制：有效卡种 = 总种类 - 锁住的种类
     effective_distinct_champs = total_distinct_champs - locked_types_count
     
     if effective_distinct_champs <= 0:
@@ -115,9 +115,9 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
     # 总卡池大小 (分母) = 单张数量 * 有效种类
     total_pool_size = one_card_total * effective_distinct_champs
     
-    # 初始卡池状态
+    # 初始卡池状态检验
     start_remaining_target = one_card_total - target_taken
-    if start_remaining_target < 0:
+    if start_remaining_target <= 0: # 修正：如果只剩0张也不能搜
         return "ERROR_TARGET_LIMIT"
         
     start_current_pool = total_pool_size - target_taken - other_taken
@@ -133,30 +133,30 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
             
         copies_found = 0
         cost_spent = 0
-        gold = current_gold
+        current_gold = start_gold # 使用传入的初始金币
         
         current_remaining_target = start_remaining_target
         current_pool = start_current_pool
         rolls_count = 0
         
-        while gold >= 2:
-            gold -= 2
+        # ✅ 修复：循环条件增加“买得起卡”的判断
+        # 如果还没搜到卡，至少要有2块钱D牌；如果搜到了，还要有钱买
+        while current_gold >= 2: 
+            
+            # 扣除刷新费用
+            current_gold -= 2
             cost_spent += 2
             rolls_count += 1
             
             # --- 商店生成逻辑 ---
-            # S10 机制：如果你没有天选，每次刷新必有 1 个天选位
-            # search_headliner=True 时，模拟 4 个普通位 + 1 个天选位
             headliner_slot_active = False
             
-            # 判断这次D牌是否应该出现天选
-            if season_data.get("HEADLINER_RATES"): # 只有S10才走这个逻辑
+            # 天选逻辑判断
+            if season_data.get("HEADLINER_RATES"): 
                 if has_headliner:
-                    # 如果场上有天选，每4次刷新出一次 (第4, 8, 12...次)
                     if rolls_count % 4 == 0:
                         headliner_slot_active = True
                 else:
-                    # 如果场上没天选，次次都有
                     headliner_slot_active = True
             
             normal_slots = 4 if headliner_slot_active else 5
@@ -164,30 +164,46 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
             # 1. 遍历普通格子
             for _ in range(normal_slots):
                 if random.random() < prob_cost_hit:
-                    # 命中费率后，判断是不是我要的卡
+                    # 命中费率，判断是否是目标卡
                     real_time_prob = current_remaining_target / max(current_pool, 1)
                     if random.random() < real_time_prob:
-                        copies_found += 1
-                        current_remaining_target -= 1
-                        current_pool -= 1
+                        # ✅ 修复：判断是否有钱买卡
+                        if current_gold >= target_cost:
+                            copies_found += 1
+                            current_remaining_target -= 1
+                            current_pool -= 1
+                            current_gold -= target_cost # ✅ 修复：扣除买卡金币
+                            cost_spent += target_cost
+                        else:
+                            # 没钱买卡了，这次模拟实际上已经失败（或者只能看着卡流泪）
+                            # 为了简化模型，这里视为没买到，但循环继续（因为可能还有2块钱D牌）
+                            pass
             
-            # 2. 遍历天选格子 (S10 核心修改)
+            # 2. 遍历天选格子 (S10)
             if headliner_slot_active:
-                # 只有 1 个位置是天选
                 if random.random() < prob_hl_cost_hit:
-                    # 规则：天选需要卡池里至少有 3 张才能刷出来
-                    # 判断是不是我要的卡 (概率同上)
+                    # 天选卡需卡池剩余 >= 3
                     if current_remaining_target >= 3:
                         real_time_prob = current_remaining_target / max(current_pool, 1)
                         if random.random() < real_time_prob:
-                            copies_found += 3 # 天选直接给 3 张！
-                            current_remaining_target -= 3
-                            current_pool -= 3
-            
+                            # 天选卡价格 = 3 * 单卡价格
+                            hl_price = target_cost * 3
+                            if current_gold >= hl_price:
+                                copies_found += 3 
+                                current_remaining_target -= 3
+                                current_pool -= 3
+                                current_gold -= hl_price # ✅ 修复：扣除天选金币
+                                cost_spent += hl_price
+                            
             if copies_found >= target_copies:
                 break
         
-        results.append({"success": copies_found >= target_copies, "cost": cost_spent})
+        # 记录是否成功
+        results.append({
+            "success": copies_found >= target_copies, 
+            "cost": cost_spent,
+            "final_copies": copies_found # 可选：用于分析平均搜到几张
+        })
     
     progress_bar.empty()
     return pd.DataFrame(results)
@@ -517,6 +533,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
