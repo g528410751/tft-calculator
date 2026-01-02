@@ -431,6 +431,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
             """
         else:
             # --- S10 Prompt  ---
+            headliner_status = "已有天选" if has_headliner else "暂无天选"
             prompt = f"""
             你现在是云顶之弈(TFT) **S10 (强音对决)** 的战术分析师。
             
@@ -514,6 +515,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
