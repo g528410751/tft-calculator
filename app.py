@@ -152,7 +152,7 @@ with st.sidebar:
     model_choice = st.radio(
         "选择大脑类型:",
         ("DeepSeek-R1 (深度思考)", "DeepSeek-V3 (极速响应)"),
-        index=0,
+        index=1,
         help="R1 会展示思考过程，适合复杂分析；V3 速度极快，适合快速给建议。"
     )
     # 映射为真实的 API 模型名称
@@ -372,6 +372,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
