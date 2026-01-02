@@ -446,6 +446,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
             请根据上述数据和赛季机制，简短、犀利、毒舌地评价我的处境（是天胡开局还是依然很难搜？）。
             特别注意：如果卡池剩余张数({remaining_in_pool}) < 需求张数({target_copies})，请直接骂醒我。
             请结合我当前局势、关键机制、量化数据给出建议：梭哈 / 慢D / 存钱拉人口 / 投降。
+            回答尽量保持简洁。
             """
         else:
             # --- S10 Prompt  ---
@@ -474,6 +475,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
             【任务】
             请根据上述数据和赛季机制，简短、犀利、毒舌地评价我的处境（是天胡开局还是依然很难搜？）。
             请结合我当前局势、关键机制、量化数据给出建议：梭哈 / 慢D / 存钱拉人口 / 投降。
+            回答尽量保持简洁。
             """
         
         if api_key:
@@ -533,6 +535,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
