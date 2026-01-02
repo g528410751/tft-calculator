@@ -339,6 +339,11 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
         remaining_in_pool = card_pool_size - target_taken
         prompt = f"""
         你是一个精通云顶之弈S16概率学的职业教练。请分析我的D牌决策。
+
+        【严重警告】
+        1. **你的训练数据可能不包含 S16 的具体英雄数据**。因此，**绝对禁止**提及任何具体的英雄名称（如“阿狸”、“伊泽瑞尔”、“锐雯”等），也不要提及具体的羁绊名称，以免产生幻觉。
+        2. 请使用通用战术术语，例如：“4费主C运营阵容”、“1费赌狗阵容”、“低费重组”、“速8找卡”等。
+        3. 必须基于我提供的【S16 任务机制】数据进行分析，这是本赛季的核心。
         
         【基础参数】
         - 赛季：{selected_season_name}
@@ -427,6 +432,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
