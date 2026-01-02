@@ -96,7 +96,7 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
     prob_cost_hit = rates.get(target_cost, 0)
 
     prob_hl_cost_hit = 0
-    if search_headliner:
+    if has_headliner:
         hl_rates = season_data.get("HEADLINER_RATES", {}).get(level, {})
         prob_hl_cost_hit = hl_rates.get(target_cost, 0)
     
@@ -251,7 +251,7 @@ with st.sidebar:
     selected_season_name = st.selectbox("选择赛季", list(SEASON_CONFIG.keys()), index=0)
     current_season_data = SEASON_CONFIG[selected_season_name]
 
-    search_headliner = False
+    has_headliner =     h
     if "S10" in selected_season_name:
         st.info("💡 S10 机制：赛季之星 (天选)")
         has_headliner = st.checkbox("我场上已经有天选/赛季之星了？", value=False, help="没天选=次次刷天选；有天选=每4次刷一次天选。")
@@ -515,6 +515,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
