@@ -135,7 +135,7 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
 
 # --- 3. UI 布局 ---
 st.title("🎲 金铲铲(TFT) 量化计算器")
-st.caption("*> 基于蒙特卡洛算法模拟 10,000 次D牌结果，拒绝玄学，相信数学。*")
+st.caption("*> 基于蒙特卡洛算法模拟 1000 次D牌结果，拒绝玄学，相信数学。*")
 st.divider()
 
 # 侧边栏
@@ -372,6 +372,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
