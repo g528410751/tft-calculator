@@ -25,7 +25,7 @@ else:
         plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
 plt.rcParams['axes.unicode_minus'] = False
 
-st.set_page_config(page_title="TFT 概率计算器 S16/S10", page_icon="🎲", layout="wide")
+st.set_page_config(page_title="金铲铲/云顶 D牌概率计算器 S16/S10", page_icon="🎲", layout="wide")
 
 # 初始化 Session State (控制手册显示) ###
 if "show_manual" not in st.session_state:
@@ -39,7 +39,7 @@ def close_manual():
 
 # --- 1. 赛季核心数据配置  ---
 SEASON_CONFIG = {
-    "S16 (英雄联盟传奇 - 任务赛季)": {
+    "S16 (英雄联盟传奇)": {
         "POOL_SIZES": {1: 30, 2: 25, 3: 18, 4: 10, 5: 9},
         "DISTINCT_CHAMPS": {1: 14, 2: 19, 3: 18, 4: 25, 5: 24}, # 包含未解锁的总数
         "DEFAULT_LOCKED": {1: 0, 2: 6, 3: 5, 4: 13, 5: 16},    # 默认锁住的数量(来自CSV)
@@ -56,7 +56,7 @@ SEASON_CONFIG = {
             10: {1: 0.05, 2: 0.10, 3: 0.20, 4: 0.40, 5: 0.25},
         }
     },
-    "S10 (强音对决 - 怀旧服)": {
+    "S10 (强音对决)": {
         "POOL_SIZES": {1: 30, 2: 25, 3: 18, 4: 12, 5: 10},
         "DISTINCT_CHAMPS": {1: 13, 2: 13, 3: 13, 4: 13, 5: 11},
         "DEFAULT_LOCKED": {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}, # S10无锁定机制
@@ -144,22 +144,28 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
     return pd.DataFrame(results)
 
 # --- 3. UI 布局 ---
-st.title("🎲 金铲铲(TFT) 量化计算器")
+st.title("🎲 金铲铲(TFT) D牌概率计算器")
 
 # 手册内容显示区域 ###
 if st.session_state.show_manual:
     with st.expander("📖 快速使用手册 (点击收起/展开)", expanded=True):
         st.markdown("""
+        #### 工具用途
+        本工具可以帮助你计算D牌的概率，并让Deepseek给出相应的决策（是否D牌/拉人口/慢D/梭哈等）
+        
         #### 💡 核心功能指南
         1. **左侧设置**：填入你的等级、金币、想要搜几费卡。
-        2. **S16 任务机制 (重点)**：
+        2. **S16 任务机制**：
            - S16 部分英雄需要任务解锁，未解锁的卡**不会**出现在商店里。
-           - **未解锁卡越多 = 卡池越小 = 搜到主C概率越高**（官方清卡池机制）。
            - 默认会自动填入该费用的“未解锁数量”，你只需调整“你解锁了几张任务卡”即可。
         3. **场外干扰**：
-           - **同行卡**：别人拿走了你要的卡（概率暴跌）。
+           - **同行卡**：别人拿走了多少张你要的卡。
            - **其他同费卡**：别人拿走了别的4费卡（概率微升，帮你清了卡池）。
-        4. **AI 教练**：填入 Key 后，DeepSeek 会帮你分析这把是梭哈还是存钱。
+        4. **AI 教练**：可以选择用Deepseek深度思考还是快速响应，深度思考给出的结论可以更准确，快速响应适合做快速决定。
+        5. **模拟报告**：点击开始模拟后会显示成功概率、预期花费和真实出卡率/格。
+            - 成功概率：有多大几率可以D到你想要的牌
+            - 预期花费：如果D牌成功，那么大概需要花费多少金币
+            - 真实出卡率/格：每一个格子出现该卡的概率
         """)
         # 关闭按钮
         if st.button("我已了解，关闭手册"):
@@ -273,7 +279,7 @@ with st.sidebar:
     num_trials = st.selectbox("模拟次数", [500, 1000, 2000], index=1)
 
 # 主运行逻辑
-if st.button("🚀 开始量化回测", type="primary", use_container_width=True):
+if st.button("🚀 开始模拟", type="primary", use_container_width=True):
     
     df = run_simulation(
         current_season_data, level, target_cost, gold, 
@@ -421,6 +427,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
