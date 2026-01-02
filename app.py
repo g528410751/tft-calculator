@@ -27,7 +27,17 @@ plt.rcParams['axes.unicode_minus'] = False
 
 st.set_page_config(page_title="TFT 概率计算器 S16/S10", page_icon="🎲", layout="wide")
 
-# --- 1. 赛季核心数据配置 (已根据CSV更新) ---
+# 初始化 Session State (控制手册显示) ###
+if "show_manual" not in st.session_state:
+    st.session_state.show_manual = True  # 默认首次打开显示
+
+def open_manual():
+    st.session_state.show_manual = True
+
+def close_manual():
+    st.session_state.show_manual = False
+
+# --- 1. 赛季核心数据配置  ---
 SEASON_CONFIG = {
     "S16 (英雄联盟传奇 - 任务赛季)": {
         "POOL_SIZES": {1: 30, 2: 25, 3: 18, 4: 10, 5: 9},
@@ -135,11 +145,35 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
 
 # --- 3. UI 布局 ---
 st.title("🎲 金铲铲(TFT) 量化计算器")
+
+# 手册内容显示区域 ###
+if st.session_state.show_manual:
+    with st.expander("📖 快速使用手册 (点击收起/展开)", expanded=True):
+        st.markdown("""
+        #### 💡 核心功能指南
+        1. **左侧设置**：填入你的等级、金币、想要搜几费卡。
+        2. **S16 任务机制 (重点)**：
+           - S16 部分英雄需要任务解锁，未解锁的卡**不会**出现在商店里。
+           - **未解锁卡越多 = 卡池越小 = 搜到主C概率越高**（官方清卡池机制）。
+           - 默认会自动填入该费用的“未解锁数量”，你只需调整“你解锁了几张任务卡”即可。
+        3. **场外干扰**：
+           - **同行卡**：别人拿走了你要的卡（概率暴跌）。
+           - **其他同费卡**：别人拿走了别的4费卡（概率微升，帮你清了卡池）。
+        4. **AI 教练**：填入 Key 后，DeepSeek 会帮你分析这把是梭哈还是存钱。
+        """)
+        # 关闭按钮
+        if st.button("我已了解，关闭手册"):
+            close_manual()
+            st.rerun()
+
 st.caption("*> 基于蒙特卡洛算法模拟 1000 次D牌结果，拒绝玄学，相信数学。*")
 st.divider()
 
 # 侧边栏
 with st.sidebar:
+    st.button("📖 打开使用手册", on_click=open_manual)
+    st.markdown("---")
+    
     st.header("🤖 AI 教练 (可选)")
     # 优先从 Secrets 读取，否则允许手动输入
     if "DEEPSEEK_API_KEY" in st.secrets:
@@ -387,6 +421,7 @@ if st.button("🚀 开始量化回测", type="primary", use_container_width=True
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
