@@ -323,7 +323,7 @@ with st.sidebar:
         min_value=0, 
         value=10, 
         step=5,
-        help=f"卡池里现在实际上有 {effective_pool_count} 种卡。如果不算你的卡，其他同费卡总数上限约为 {max_other_cards_pool}。"
+        help=f"卡池里现在实际上有 {effective_pool_count} 种卡。如果不算你的卡，其他同费卡总数上限约为 {max_other_cards_pool}。",
         st.caption("注意：这里的逻辑计算方式尚未完善，因为还涉及到其他玩家的任务卡，但总体影响不大，可以先这样用")
     )
 
@@ -513,6 +513,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
