@@ -96,8 +96,10 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
     prob_cost_hit = rates.get(target_cost, 0)
 
     prob_hl_cost_hit = 0
-    if has_headliner:
-        hl_rates = season_data.get("HEADLINER_RATES", {}).get(level, {})
+    # ✅ 正确写法：检查赛季数据里有没有天选配置表
+    hl_rates_config = season_data.get("HEADLINER_RATES", {})
+    if hl_rates_config:
+        hl_rates = hl_rates_config.get(level, {})
         prob_hl_cost_hit = hl_rates.get(target_cost, 0)
     
     # 获取该费用基础数据
@@ -515,6 +517,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
+
 
 
 
