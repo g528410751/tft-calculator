@@ -88,7 +88,7 @@ SEASON_CONFIG = {
 }
 
 # --- 2. 核心模拟逻辑 ---
-def run_simulation(season_data, level, target_cost, current_gold, target_copies, target_taken, other_taken, num_trials, locked_types_count=0, search_headliner=False):
+def run_simulation(season_data, level, target_cost, current_gold, target_copies, target_taken, other_taken, num_trials, locked_types_count=0, has_headliner=False):
     
     rates = season_data["DROP_RATES"].get(level, {})
     if not rates:
@@ -139,11 +139,24 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
         while gold >= 2:
             gold -= 2
             cost_spent += 2
+            rolls_count += 1
             
             # --- 商店生成逻辑 ---
             # S10 机制：如果你没有天选，每次刷新必有 1 个天选位
             # search_headliner=True 时，模拟 4 个普通位 + 1 个天选位
-            normal_slots = 4 if search_headliner else 5
+            headliner_slot_active = False
+            
+            # 判断这次D牌是否应该出现天选
+            if season_data.get("HEADLINER_RATES"): # 只有S10才走这个逻辑
+                if has_headliner:
+                    # 如果场上有天选，每4次刷新出一次 (第4, 8, 12...次)
+                    if rolls_count % 4 == 0:
+                        headliner_slot_active = True
+                else:
+                    # 如果场上没天选，次次都有
+                    headliner_slot_active = True
+            
+            normal_slots = 4 if headliner_slot_active else 5
             
             # 1. 遍历普通格子
             for _ in range(normal_slots):
@@ -156,7 +169,7 @@ def run_simulation(season_data, level, target_cost, current_gold, target_copies,
                         current_pool -= 1
             
             # 2. 遍历天选格子 (S10 核心修改)
-            if search_headliner:
+            if headliner_slot_active:
                 # 只有 1 个位置是天选
                 if random.random() < prob_hl_cost_hit:
                     # 规则：天选需要卡池里至少有 3 张才能刷出来
@@ -241,7 +254,7 @@ with st.sidebar:
     search_headliner = False
     if "S10" in selected_season_name:
         st.info("💡 S10 机制：赛季之星 (天选)")
-        search_headliner = st.checkbox("我是来找天选/赛季之星的", value=True, help="勾选后，每次刷新必有一个格子是天选位，命中直接获得3张！")
+        has_headliner = st.checkbox("我场上已经有天选/赛季之星了？", value=False, help="没天选=次次刷天选；有天选=每4次刷一次天选。")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -323,7 +336,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
         current_season_data, level, target_cost, gold, 
         target_copies, target_taken, other_taken, num_trials,
         locked_types_count=locked_types,
-        search_headliner=search_headliner
+        has_headliner=has_headliner
     )
     
     # 错误处理
@@ -426,7 +439,7 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
             - 竞争环境：卡池上限 {card_pool_size} 张。
               - 致命伤：外面已经有 {target_taken} 张我的卡被拿走。
               - 干扰项：外面拿走了 {other_taken} 张其他的 {target_cost} 费卡 (帮我清了卡池)。
-            - **核心机制**：我正在找天选(Season Headliner)：{'是' if search_headliner else '否'}。(S10天选机制：买入即2星，注意：如果我找天选，一旦命中就是3张，爆发性极强)
+            - **核心机制**：当前场上天选状态：{headliner_status}。(S10天选机制：买入即2星,如果还没天选，每次D牌必出天选位；如果已有天选，每D 4次才出一次天选位。买入即3张)
 
             【量化结果】
             - 成功率: {success_rate*100:.1f}% 
@@ -500,24 +513,5 @@ if st.button("🚀 开始模拟", type="primary", use_container_width=True):
                 st.error(f"AI 连接失败: {e}")
         else:
              st.info(f"**分析结论：** 当前成功率为 {success_rate*100:.1f}%。{'建议冲刺！' if success_rate > 0.6 else '风险极高，建议观望。'}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
